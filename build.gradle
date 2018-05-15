@@ -2,7 +2,7 @@ def version = new File("VERSION").text.trim()
 def dependencyVersion = new File("DEP_VERSION").text.trim()
 def dependencyImage = "local/dependency"
 def codeImage = "local/code"
-def binaryImage = "local/binary"
+def binaryImage = "local/app"
 
 task bumpVersion {
   doLast {
@@ -16,7 +16,17 @@ task bumpVersion {
   }
 }
 
+task updateDependencyVersion {
+  doLast {
+    exec {
+      standardOutput = new FileOutputStream("DEP_VERSION")
+        commandLine "cat", "VERSION"
+    }
+  }
+}
+
 task buildDependencyImage {
+  //If inputs change, rebuild dependencies with the current app version as the new dependency version
   inputs.files(["Gopkg.toml", "Gopkg.lock"])
   outputs.files("dependencies/${dependencyVersion}/docker-build.out")
 
@@ -30,16 +40,20 @@ task buildDependencyImage {
                     "-t", "${dependencyImage}:${version}", "."
       }
       exec {
-        dependencyVersion = version
-        standardOutput = new FileOutputStream("dependencies/${dependencyVersion}/docker-build.out")
+        standardOutput = new FileOutputStream("dependencies/${version}/docker-build.out")
         commandLine "docker", "images",
                     "--format", "{{.ID}}",
-                    "${dependencyImage}:${dependencyVersion}"
+                    "${dependencyImage}:${version}"
       }
     }
 }
 
 task buildCodeImage {
+  FileTree inputFiles = fileTree(dir:".")
+  inputFiles.include("server.go")
+  inputFiles.include("**/*.go")
+  inputFiles.include("build/Dockerfile")
+  inputs.files(inputFiles)
   outputs.files("build/${version}/docker-build.out")
 
   doLast {
@@ -56,17 +70,48 @@ task buildCodeImage {
     }
 
     exec {
-      StandardOutput = new FileOutputStream("build/${version}/docker-build.out")
+      standardOutput = new FileOutputStream("build/${version}/docker-build.out")
       workingDir '.'
       commandLine "docker", "images",
                   "--format", "{{.ID}}",
-                  "${binaryImage}:${version}"
+                  "${codeImage}:${version}"
     }
   }
 }
 
-task binary
+task binary {
+  inputs.files(buildCodeImage)
+  outputs.file("build/${version}/local")
+  doLast {
+    exec {
+      commandLine "docker", "run",
+                  "-v", "${workingDir}/build/${version}:/go/out",
+                  "${codeImage}:${version}"
+    }
+  }
+}
+
 task build {
+  inputs.files(binary, "Dockerfile")
+  outputs.file("build/${version}/buildCheck.out")
+  doLast {
+    exec{
+      commandLine "docker", "build",
+                  "--build-arg", "VERSION=${version}",
+                  "--build-arg", "BUILD_TIME=${new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX")}",
+                  "-t", "local/app:${version}",
+                  "."
+    }
+    exec {
+      standardOutput = new FileOutputStream("build/${version}/buildCheck.out")
+      commandLine "docker", "images",
+                  "--format", "{{.ID}}",
+                  "${binaryImage}:${version}"
+    }
+    exec {
+      commandLine "docker", "tag", "${binaryImage}:${version}", "${binaryImage}:latest"
+    }
+  }
 }
 
 task serve {

@@ -1,6 +1,9 @@
 package main
 
 import (
+	"flag"
+	"os"
+
 	"github.com/evilwire/go-env"
 	"github.com/golang/glog"
 	"github.com/labstack/echo"
@@ -22,7 +25,10 @@ type App struct {
 }
 
 func main() {
+	flag.Parse()
 	app := mustSetupApp()
+	glog.Infof("VERSION: %s\n", os.Getenv("VERSION"))
+	app.Start()
 }
 
 func mustSetupApp() *App {
@@ -66,7 +72,7 @@ func (app *App) mustSetupApis(envReader *goenv.OsEnvReader) {
 	app.ImageApi = imageApi
 }
 
-func (app *App) mustSetupWebserver(envReader *goenv.OsEnvReader) *echo.Echo {
+func (app *App) mustSetupWebserver(envReader *goenv.OsEnvReader) {
 	e := echo.New()
 	e.Use(middleware.Logger())
 
@@ -84,6 +90,8 @@ func (app *App) mustSetupWebserver(envReader *goenv.OsEnvReader) *echo.Echo {
 
 	//Image REST
 	e.POST("/image/new", app.ImageApi.NewImage)
+
+	app.Webserver = e
 }
 
 func (this *App) healthCheck(c echo.Context) error {
@@ -104,4 +112,9 @@ func (this *App) healthCheck(c echo.Context) error {
 		Meta:   meta,
 		Status: "ok",
 	})
+}
+
+func (app *App) Start() error {
+	glog.Info("Starting webserver...")
+	return app.Webserver.Start(":8080")
 }

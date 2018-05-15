@@ -17,4 +17,6 @@ COPY . $WORKDIR
 RUN mkdir -p $OUT_DIR
 VOLUME $OUT_DIR
 
-CMD ["go", "install", "&&", "cp", "/go/bin/local", "/go/out"]
+RUN go install
+
+CMD ["cp", "/go/bin/local", "/go/out"]
