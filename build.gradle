@@ -1,0 +1,76 @@
+def version = new File("VERSION").text.trim()
+def dependencyVersion = new File("DEP_VERSION").text.trim()
+def dependencyImage = "local/dependency"
+def codeImage = "local/code"
+def binaryImage = "local/binary"
+
+task bumpVersion {
+  doLast {
+      def sout = new ByteArrayOutputStream()
+        exec {
+          standardOutput = sout;
+          commandLine "python", "bump_version.py", "VERSION", "${bumpVersion}"
+        }
+
+      version = sout.toString().trim()
+  }
+}
+
+task buildDependencyImage {
+  inputs.files(["Gopkg.toml", "Gopkg.lock"])
+  outputs.files("dependencies/${dependencyVersion}/docker-build.out")
+
+
+    doLast {
+      mkdir "dependencies/${version}"
+      exec {
+        commandLine "docker", "build",
+                    "--rm",
+                    "-f", "dependencies/Dockerfile",
+                    "-t", "${dependencyImage}:${version}", "."
+      }
+      exec {
+        dependencyVersion = version
+        standardOutput = new FileOutputStream("dependencies/${dependencyVersion}/docker-build.out")
+        commandLine "docker", "images",
+                    "--format", "{{.ID}}",
+                    "${dependencyImage}:${dependencyVersion}"
+      }
+    }
+}
+
+task buildCodeImage {
+  outputs.files("build/${version}/docker-build.out")
+
+  doLast {
+    file("build/${version}").mkdir()
+    exec {
+      workingDir '.'
+      commandLine "docker", "build",
+        "--rm",
+        "-f", "build/Dockerfile",
+        "--build-arg", "VERSION=${version}",
+        "--build-arg", 'OUT_DIR=/go/out',
+        "--build-arg", "DEP_VER=${dependencyVersion}",
+        "-t", "${codeImage}:${version}", '.'
+    }
+
+    exec {
+      StandardOutput = new FileOutputStream("build/${version}/docker-build.out")
+      workingDir '.'
+      commandLine "docker", "images",
+                  "--format", "{{.ID}}",
+                  "${binaryImage}:${version}"
+    }
+  }
+}
+
+task binary
+task build {
+}
+
+task serve {
+}
+
+task startDb {
+}
