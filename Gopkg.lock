@@ -50,6 +50,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  name = "github.com/segmentio/ksuid"
+  packages = ["."]
+  revision = "112f929a3020abfcd06b77c963ec919130796a35"
+  version = "1.0.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/valyala/bytebufferpool"
   packages = ["."]
@@ -76,6 +82,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fbdf28a521db6f7cf37afbb5b5a009763eaeeaa417f221cac6d9e750fd94dcd9"
+  inputs-digest = "8bf38762edb9fd70f8d1154e8e39d846602297893bc68282cb9ef0f5a791e130"
   solver-name = "gps-cdcl"
   solver-version = 1

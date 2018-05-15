@@ -71,7 +71,7 @@ func (app *App) mustSetupWebserver(envReader *goenv.OsEnvReader) *echo.Echo {
 	e.Use(middleware.Logger())
 
 	//HealthCheck
-	e.GET("/healthcheck", healthCheck)
+	e.GET("/healthcheck", app.healthCheck)
 
 	//End-User REST
 	e.POST("/user/new", app.UserApi.SignUpUser)
@@ -81,9 +81,12 @@ func (app *App) mustSetupWebserver(envReader *goenv.OsEnvReader) *echo.Echo {
 
 	//Event REST
 	e.POST("/event/new", app.EventApi.NewEvent)
+
+	//Image REST
+	e.POST("/image/new", app.ImageApi.NewImage)
 }
 
-func healthCheck(c echo.Context) error {
+func (this *App) healthCheck(c echo.Context) error {
 	meta := AppMeta{}
 	marshaler := goenv.DefaultEnvMarshaler{goenv.NewOsEnvReader()}
 	err := marshaler.Unmarshal(&meta)
