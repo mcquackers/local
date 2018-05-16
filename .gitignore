@@ -1,3 +1,5 @@
 vendor/**
 build/**/*
 !build/Dockerfile
+.gradle
+.DS_*
